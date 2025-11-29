@@ -419,7 +419,11 @@
           if (!key) return;
 
           if (localStorage.getItem(key) !== null) {
-            if (!confirm(`A "${key}" kulcs már létezik. Biztosan felülírod?`)) {
+            if (
+              !confirm(
+                `The key "${key}" already exists. Are you sure you want to overwrite it?`
+              )
+            ) {
               return;
             }
           }
@@ -448,7 +452,11 @@
 
         function deleteKey() {
           if (!state.selectedKey) return;
-          if (confirm(`Biztosan törlöd a "${state.selectedKey}" kulcsot?`)) {
+          if (
+            confirm(
+              `Are you sure you want to delete the key "${state.selectedKey}"?`
+            )
+          ) {
             localStorage.removeItem(state.selectedKey);
             state.keys = Object.keys(localStorage);
             resetSelection();
@@ -456,7 +464,11 @@
         }
 
         function clearAll() {
-          if (confirm("Clear ALL localStorage?")) {
+          if (
+            confirm(
+              "Are you sure you want to clear ALL localStorage entries? This action cannot be undone."
+            )
+          ) {
             localStorage.clear();
             state.keys = [];
             resetSelection();
@@ -527,7 +539,7 @@
             reader.onload = (e) => {
               if (
                 !confirm(
-                  "FIGYELEM!\nEz a művelet törli a teljes jelenlegi localStorage tartalmát és felülírja a fájlban lévő adatokkal. Biztosan folytatja?"
+                  "WARNING!\nThis will clear the entire current localStorage and overwrite it with data from the file. Are you sure you want to continue?"
                 )
               ) {
                 return;
@@ -542,9 +554,7 @@
                 state.keys = Object.keys(localStorage);
                 resetSelection();
               } catch (err) {
-                alert(
-                  "Hiba a fájl feldolgozása közben. A fájl érvénytelen JSON-t tartalmazhat."
-                );
+                alert("Error processing file. It may contain invalid JSON.");
                 console.error("Import error:", err);
               }
             };
