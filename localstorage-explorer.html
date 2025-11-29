@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LocalStorage Explorer</title>
+    <style>
+      :root {
+        --color-bg-primary: #f6f8fa;
+        --color-bg-secondary: #ffffff;
+        --color-bg-tertiary-hover: #f6f8fa;
+        --color-text-primary: #24292f;
+        --color-border-primary: #d0d7de;
+        --color-border-secondary: #eaeef2;
+        --color-accent: #0969da;
+        --color-accent-bg: #ddf4ff;
+        --color-btn-bg: #f6f8fa;
+        --color-btn-hover-bg: #f3f4f6;
+        --color-input-bg: #f6f8fa;
+        --color-util-btn-bg: #2c974b;
+        --color-editor-text: #24292f;
+        --color-util-btn-hover-bg: #298e46;
+        --color-util-btn-text: #ffffff;
+      }
+
+      body[data-theme="dark"] {
+        --color-bg-primary: #0d1117;
+        --color-bg-secondary: #161b22;
+        --color-bg-tertiary-hover: #21262d;
+        --color-text-primary: #c9d1d9;
+        --color-border-primary: #30363d;
+        --color-border-secondary: #21262d;
+        --color-accent: #58a6ff;
+        --color-accent-bg: #1f6feb;
+        --color-btn-bg: #21262d;
+        --color-btn-hover-bg: #30363d;
+        --color-input-bg: #010409; /* A slightly darker, distinct background for inputs */
+        --color-util-btn-bg: #238636;
+        --color-editor-text: #e6edf3; /* A slightly brighter text for the editor */
+        --color-util-btn-hover-bg: #2ea043;
+        --color-util-btn-text: #ffffff;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+          Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+        margin: 0;
+        display: flex;
+        height: 100vh;
+        background-color: var(--color-bg-primary);
+        color: var(--color-text-primary);
+      }
+      #keys-panel {
+        width: 30%;
+        min-width: 260px;
+        border-right: 1px solid var(--color-border-primary);
+        display: flex;
+        flex-direction: column;
+        padding: 1rem;
+        background-color: var(--color-bg-secondary);
+      }
+      #search {
+        margin-bottom: 0.5rem;
+        display: flex;
+        gap: 0.5rem;
+      }
+      #keys {
+        flex: 1;
+        overflow-y: auto;
+      }
+      .key {
+        border-bottom: 1px solid var(--color-border-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .key-name {
+        padding: 0.5rem;
+        cursor: pointer;
+        flex-grow: 1;
+      }
+      .key:hover {
+        background-color: var(--color-bg-tertiary-hover);
+      }
+      .selected {
+        background-color: var(--color-accent-bg);
+      }
+      #value-panel {
+        flex: 1;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+      }
+      #editor {
+        flex: 1;
+        width: 100%;
+        font-family: monospace;
+        white-space: pre;
+      }
+      #controls {
+        margin-bottom: 0.75rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border: 1px solid rgba(27, 31, 36, 0.15);
+        border-color: var(--color-border-primary);
+        border-radius: 6px;
+        background-color: var(--color-btn-bg);
+        color: var(--color-text-primary);
+        font-weight: 500;
+        transition: background-color 0.2s cubic-bezier(0.3, 0, 0.5, 1);
+      }
+      button:hover {
+        background-color: var(--color-btn-hover-bg);
+      }
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      #new {
+        margin-bottom: 1rem;
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 0.5rem;
+        box-sizing: border-box;
+        border: 1px solid var(--color-border-primary);
+        border-radius: 6px;
+        background-color: var(--color-input-bg);
+        color: var(--color-text-primary);
+        color: var(--color-editor-text);
+      }
+      input:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--color-accent);
+        box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.3); /* This shadow is subtle and works on both themes */
+      }
+      .copy-key-btn {
+        padding: 0.2rem 0.4rem;
+        margin-right: 0.5rem;
+        font-size: 0.75em;
+        visibility: hidden; /* Hide by default */
+      }
+      .key:hover .copy-key-btn {
+        visibility: visible; /* Show on hover */
+      }
+      .json-icon {
+        color: var(--color-accent);
+        font-weight: bold;
+        font-size: 0.8em;
+        margin-left: 8px;
+        display: inline-block;
+        vertical-align: middle;
+      }
+      .util-btn {
+        background-color: var(--color-util-btn-bg);
+        color: var(--color-util-btn-text);
+        margin-left: auto; /* Pushes them to the right */
+      }
+      .util-btn:hover {
+        background-color: var(--color-util-btn-hover-bg);
+      }
+      #themeToggleBtn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.2rem;
+        padding: 0 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="keys-panel">
+      <div id="search">
+        <input id="filterInput" placeholder="Search keys..." />
+        <button id="themeToggleBtn" title="Toggle theme">🌙</button>
+      </div>
+      <div id="keys"></div>
+    </div>
+
+    <div id="value-panel">
+      <div id="new">
+        <input id="newKey" placeholder="New key..." />
+        <textarea id="newValue" rows="3" placeholder="Value..."></textarea>
+        <button id="saveNewBtn">Save New</button>
+      </div>
+
+      <h3 id="currentKey">Select a key...</h3>
+      <div id="controls">
+        <button id="copyValueBtn">Copy</button>
+        <button id="saveEditBtn">Save</button>
+        <button id="deleteKeyBtn">Delete</button>
+        <button id="clearAllBtn">Clear All</button>
+        <button id="exportBtn" class="util-btn">Export All</button>
+        <button id="importBtn" class="util-btn">Import from File...</button>
+      </div>
+
+      <textarea id="editor"></textarea>
+    </div>
+
+    <script>
+      (function () {
+        // ----- DOM ELEMENTS -----
+        const keysPanel = {
+          filterInput: document.getElementById("filterInput"),
+          keysContainer: document.getElementById("keys"),
+          themeToggleBtn: document.getElementById("themeToggleBtn"),
+        };
+
+        const valuePanel = {
+          newKeyInput: document.getElementById("newKey"),
+          newValueInput: document.getElementById("newValue"),
+          saveNewBtn: document.getElementById("saveNewBtn"),
+          currentKeyHeader: document.getElementById("currentKey"),
+          editor: document.getElementById("editor"),
+          copyValueBtn: document.getElementById("copyValueBtn"),
+          saveEditBtn: document.getElementById("saveEditBtn"),
+          deleteKeyBtn: document.getElementById("deleteKeyBtn"),
+          clearAllBtn: document.getElementById("clearAllBtn"),
+          exportBtn: document.getElementById("exportBtn"),
+          importBtn: document.getElementById("importBtn"),
+        };
+
+        // ----- STATE -----
+        const stateHandler = {
+          get(target, prop, receiver) {
+            const value = Reflect.get(target, prop, receiver);
+            if (typeof value === "object" && value !== null) {
+              return new Proxy(value, stateHandler);
+            }
+            return value;
+          },
+          set(target, prop, value) {
+            const success = Reflect.set(target, prop, value);
+            if (prop === "keys") renderKeys();
+            if (prop === "selectedKey" || prop === "selectedValue") {
+              renderSelected(); // This will handle updating the selection style
+            }
+            return success;
+          },
+        };
+
+        const state = new Proxy(
+          {
+            keys: [],
+            selectedKey: null,
+            selectedValue: "",
+          },
+          stateHandler
+        );
+
+        // ----- RENDER -----
+        function renderKeys() {
+          const query = keysPanel.filterInput.value.toLowerCase();
+          keysPanel.keysContainer.innerHTML = "";
+          state.keys
+            .filter((k) => k.toLowerCase().includes(query))
+            .forEach((key) => {
+              const div = document.createElement("div");
+              div.className = "key";
+              if (key === state.selectedKey) {
+                div.classList.add("selected");
+              }
+
+              const keyNameSpan = document.createElement("span");
+              keyNameSpan.textContent = key;
+              keyNameSpan.className = "key-name";
+              keyNameSpan.onclick = () => selectKey(key);
+
+              const value = localStorage.getItem(key);
+              if (isJsonString(value)) {
+                const jsonIcon = document.createElement("span");
+                jsonIcon.className = "json-icon";
+                jsonIcon.textContent = "{}";
+                jsonIcon.title = "Value is a JSON object/array";
+                keyNameSpan.appendChild(jsonIcon);
+              }
+              const copyKeyBtn = document.createElement("button");
+              copyKeyBtn.textContent = "Copy";
+              copyKeyBtn.className = "copy-key-btn";
+              copyKeyBtn.onclick = (event) => {
+                event.stopPropagation(); // Prevent selecting the key
+                copyKey(key, event.target);
+              };
+
+              div.appendChild(keyNameSpan);
+              div.appendChild(copyKeyBtn);
+              keysPanel.keysContainer.appendChild(div);
+            });
+        }
+
+        function renderSelected() {
+          valuePanel.currentKeyHeader.textContent =
+            state.selectedKey || "Select a key...";
+
+          const editor = valuePanel.editor;
+          if (state.selectedValue) {
+            try {
+              const parsed = JSON.parse(state.selectedValue);
+              editor.value = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+              editor.value = state.selectedValue;
+            }
+          } else {
+            editor.value = "";
+          }
+
+          const currentSelected =
+            keysPanel.keysContainer.querySelector(".selected");
+          if (currentSelected) {
+            currentSelected.classList.remove("selected");
+          }
+          if (state.selectedKey) {
+            Array.from(keysPanel.keysContainer.children)
+              .find((div) =>
+                div.firstChild.textContent.startsWith(state.selectedKey)
+              )
+              ?.classList.add("selected");
+          }
+
+          updateSaveButtonState();
+          updateActionButtonsState();
+        }
+
+        // ----- HANDLERS -----
+        function getCanonicalValue(value) {
+          try {
+            return JSON.stringify(JSON.parse(value));
+          } catch (e) {
+            return value;
+          }
+        }
+
+        function isJsonString(str) {
+          if (typeof str !== "string" || str.trim() === "") {
+            return false;
+          }
+          try {
+            const parsed = JSON.parse(str);
+            return typeof parsed === "object" && parsed !== null;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        function looksLikeJson(str) {
+          if (typeof str !== "string") return false;
+          const trimmed = str.trim();
+          return (
+            (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+            (trimmed.startsWith("[") && trimmed.endsWith("]"))
+          );
+        }
+
+        function updateSaveButtonState() {
+          if (!state.selectedKey) {
+            valuePanel.saveEditBtn.disabled = true;
+            return;
+          }
+          const editorCanonicalValue = getCanonicalValue(
+            valuePanel.editor.value
+          );
+          valuePanel.saveEditBtn.disabled =
+            editorCanonicalValue === getCanonicalValue(state.selectedValue);
+        }
+
+        function updateSaveNewButtonState() {
+          valuePanel.saveNewBtn.disabled =
+            valuePanel.newKeyInput.value.trim() === "";
+        }
+
+        function updateActionButtonsState() {
+          const isDisabled = !state.selectedKey;
+          valuePanel.copyValueBtn.disabled = isDisabled;
+          valuePanel.deleteKeyBtn.disabled = isDisabled;
+        }
+
+        function selectKey(key) {
+          state.selectedKey = key;
+          state.selectedValue = localStorage.getItem(key);
+          valuePanel.editor.style.borderColor = "";
+          updateSaveButtonState();
+        }
+
+        function saveEdit() {
+          if (!state.selectedKey) return;
+
+          const editorValue = valuePanel.editor.value;
+          let valueToSave = editorValue;
+
+          const isNowJson = isJsonString(editorValue);
+
+          if (isNowJson) {
+            valueToSave = JSON.stringify(JSON.parse(editorValue));
+            valuePanel.editor.style.borderColor = "";
+          } else if (looksLikeJson(editorValue) && !isNowJson) {
+            console.warn(
+              "The content looks like JSON, but is not valid. Saving as raw text."
+            );
+            valuePanel.editor.style.borderColor = "red";
+          } else {
+            valuePanel.editor.style.borderColor = "";
+          }
+
+          localStorage.setItem(state.selectedKey, valueToSave);
+          state.selectedValue = valueToSave;
+          updateSaveButtonState();
+        }
+
+        function saveNew() {
+          const key = valuePanel.newKeyInput.value.trim();
+          let val = valuePanel.newValueInput.value;
+          if (!key) return;
+
+          if (localStorage.getItem(key) !== null) {
+            if (!confirm(`A "${key}" kulcs már létezik. Biztosan felülírod?`)) {
+              return;
+            }
+          }
+
+          try {
+            val = JSON.stringify(JSON.parse(val));
+          } catch (e) {}
+
+          localStorage.setItem(key, val);
+          valuePanel.newKeyInput.value = "";
+          valuePanel.newValueInput.value = "";
+
+          updateSaveNewButtonState();
+
+          if (!state.keys.includes(key)) {
+            state.keys = [...state.keys, key];
+          } else if (key === state.selectedKey) {
+            state.selectedValue = val;
+          }
+        }
+
+        function resetSelection() {
+          state.selectedKey = null;
+          state.selectedValue = "";
+        }
+
+        function deleteKey() {
+          if (!state.selectedKey) return;
+          if (confirm(`Biztosan törlöd a "${state.selectedKey}" kulcsot?`)) {
+            localStorage.removeItem(state.selectedKey);
+            state.keys = Object.keys(localStorage);
+            resetSelection();
+          }
+        }
+
+        function clearAll() {
+          if (confirm("Clear ALL localStorage?")) {
+            localStorage.clear();
+            state.keys = [];
+            resetSelection();
+          }
+        }
+
+        function filterKeys() {
+          renderKeys();
+        }
+
+        async function copyValue() {
+          if (!state.selectedKey) return;
+
+          try {
+            await navigator.clipboard.writeText(valuePanel.editor.value);
+            const originalText = valuePanel.copyValueBtn.textContent;
+            valuePanel.copyValueBtn.textContent = "Copied!";
+            setTimeout(() => {
+              valuePanel.copyValueBtn.textContent = originalText;
+            }, 1500);
+          } catch (err) {
+            console.error("Failed to copy text: ", err);
+          }
+        }
+
+        async function copyKey(key, buttonElement) {
+          try {
+            await navigator.clipboard.writeText(key);
+            const originalText = buttonElement.textContent;
+            buttonElement.textContent = "Copied!";
+            setTimeout(() => {
+              buttonElement.textContent = originalText;
+            }, 1500);
+          } catch (err) {
+            console.error("Failed to copy key: ", err);
+          }
+        }
+
+        function exportData() {
+          const allData = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            allData[key] = localStorage.getItem(key);
+          }
+
+          const blob = new Blob([JSON.stringify(allData, null, 2)], {
+            type: "application/json",
+          });
+
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          const date = new Date().toISOString().slice(0, 10);
+          a.download = `localStorage-export-${date}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+
+        function importData() {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "application/json,.json";
+          input.onchange = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              if (
+                !confirm(
+                  "FIGYELEM!\nEz a művelet törli a teljes jelenlegi localStorage tartalmát és felülírja a fájlban lévő adatokkal. Biztosan folytatja?"
+                )
+              ) {
+                return;
+              }
+
+              try {
+                const data = JSON.parse(e.target.result);
+                localStorage.clear();
+                for (const key in data) {
+                  localStorage.setItem(key, data[key]);
+                }
+                state.keys = Object.keys(localStorage);
+                resetSelection();
+              } catch (err) {
+                alert(
+                  "Hiba a fájl feldolgozása közben. A fájl érvénytelen JSON-t tartalmazhat."
+                );
+                console.error("Import error:", err);
+              }
+            };
+            reader.readAsText(file);
+          };
+          input.click();
+        }
+
+        // ----- THEME -----
+        const themeToggleBtn = keysPanel.themeToggleBtn;
+        const currentTheme = localStorage.getItem("theme") || "light";
+        document.body.dataset.theme = currentTheme;
+        themeToggleBtn.textContent = currentTheme === "light" ? "🌙" : "☀️";
+
+        function toggleTheme() {
+          const newTheme =
+            document.body.dataset.theme === "light" ? "dark" : "light";
+          document.body.dataset.theme = newTheme;
+          localStorage.setItem("theme", newTheme);
+          themeToggleBtn.textContent = newTheme === "light" ? "🌙" : "☀️";
+          themeToggleBtn.title = `Switch to ${
+            newTheme === "light" ? "dark" : "light"
+          } mode`;
+        }
+
+        // ----- EVENT LISTENERS -----
+        themeToggleBtn.addEventListener("click", toggleTheme);
+        keysPanel.filterInput.addEventListener("input", filterKeys);
+        valuePanel.saveNewBtn.addEventListener("click", saveNew);
+        valuePanel.newKeyInput.addEventListener(
+          "input",
+          updateSaveNewButtonState
+        );
+        valuePanel.saveEditBtn.addEventListener("click", saveEdit);
+        valuePanel.copyValueBtn.addEventListener("click", copyValue);
+        valuePanel.deleteKeyBtn.addEventListener("click", deleteKey);
+        valuePanel.clearAllBtn.addEventListener("click", clearAll);
+        valuePanel.exportBtn.addEventListener("click", exportData);
+        valuePanel.importBtn.addEventListener("click", importData);
+        valuePanel.editor.addEventListener("input", updateSaveButtonState);
+
+        window.addEventListener("storage", () => {
+          state.keys = Object.keys(localStorage);
+
+          if (state.selectedKey) {
+            const newVal = localStorage.getItem(state.selectedKey);
+            if (newVal === null) {
+              state.selectedKey = null;
+              state.selectedValue = "";
+            } else if (valuePanel.editor !== document.activeElement) {
+              state.selectedValue = newVal;
+            }
+          }
+        });
+
+        // ----- INIT -----
+        state.keys = Object.keys(localStorage);
+        updateSaveButtonState();
+        updateActionButtonsState();
+        updateSaveNewButtonState();
+      })();
+    </script>
+  </body>
+</html>
